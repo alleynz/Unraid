@@ -1,0 +1,57 @@
+cat > /mnt/user/appdata/grafana-stack/compose.yaml <<'EOF'
+services:
+  loki:
+    image: grafana/loki:3.7.4
+    container_name: loki
+    command:
+      - -config.file=/etc/loki/loki-config.yaml
+    volumes:
+      - /mnt/user/appdata/grafana-stack/loki/config/loki-config.yaml:/etc/loki/loki-config.yaml:ro
+      - /mnt/user/appdata/grafana-stack/loki/data:/loki
+    restart: unless-stopped
+    networks:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ChangeThisPassword
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - /mnt/user/appdata/grafana-stack/grafana/data:/var/lib/grafana
+      - /mnt/user/appdata/grafana-stack/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - loki
+    restart: unless-stopped
+    networks:
+      - monitoring
+
+  alloy:
+    image: grafana/alloy:latest
+    container_name: alloy
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    ports:
+      - "12345:12345"
+    volumes:
+      - /mnt/user/appdata/grafana-stack/alloy/config/config.alloy:/etc/alloy/config.alloy:ro
+      - /mnt/user/appdata/grafana-stack/alloy/data:/var/lib/alloy/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - loki
+    restart: unless-stopped
+    networks:
+      - monitoring
+
+networks:
+  monitoring:
+    name: monitoring
+    driver: bridge
+EOF
